@@ -42,13 +42,18 @@ class Virus():
         self.axes.set_ylim(0, 1)
 
         #annotations 
-        self.day_text = self.axes.annotate("Day 0", xy=[np.pi / 2, 1], ha="center", va="bottom")
+        self.day_text = self.axes.annotate(
+            "Day 0", xy=[np.pi / 2, 1], ha="center", va="bottom")
 
-        self.infected_text = self.axes.annotate("Infected: 0", xy=[3 * np.pi / 2, 1], ha="center", va="bottom", color=RED)
+        self.infected_text = self.axes.annotate(
+            "Infected: 0", xy=[3 * np.pi / 2, 1], ha="center", va="bottom", color=RED)
 
-        self.deaths_text = self.axes.annotate("\nDeaths: 0", xy=[3 * np.pi / 2, 1], ha="center", va="bottom", color=BLACK)
+        self.deaths_text = self.axes.annotate(
+            "\nDeaths: 0", xy=[3 * np.pi / 2, 1],
+            ha="center", va="bottom", color=BLACK)
     
-        self.recovered_text = self.axes.annotate("\nRecovered: 0", xy=[3 * np.pi / 2, 1], ha="center", va="bottom", color=GREEN)
+        self.recovered_text = self.axes.annotate(
+            "\nRecovered: 0", xy=[3 * np.pi / 2, 1], ha="center", va="bottom", color=GREEN)
 
         #member vars
         self.day = 0
@@ -122,7 +127,7 @@ class Virus():
 
         #is current day multiple of interval
         #is exposed less than total population
-        if self.day % self.serial_interval == 0 and self.exposed < 4500:
+        if self.day % self.serial_interval == 0 and self.exposed_before < 4500:
 
             #calculate n of newply infected people
             #round to the nearest whole n
@@ -150,11 +155,51 @@ class Virus():
 
             rs = [self.rs[i] for i in self.new_infected_indices]
 
+            self.anim.event_source.stop()
+
+            if len(self.new_infected_indices) > 24:
+                size_list = round(len(self.new_infected_indices) / 24)
+
+                theta_chunks = list(self.chunks(thetas, size_list))
+                r_chunks = list(self.chunks(rs, size_list))
+
+                self.anim2 = ani.FuncAnimation(
+                    self.fig,
+                    self.one_by_one,
+                    interval = 50,
+                    frames = len(theta_chunks),
+                    fargs = (theta_chunks, r_chunks, RED)
+                )
+            else:
+                self.anim2 = ani.FuncAnimation(
+                    self.fig,
+                    self.one_by_one,
+                    interval = 50,
+                    frames=len(thetas),
+                    fargs=(thetas, rs, RED)
+                )
+
             self.assign_symptoms()
 
-        self.day -= 1
+        self.day += 1
         self.update_status()
         self.update_text()
+
+
+
+    def one_by_one(self, i, thetas, rs, color):
+        self.axes.scatter(thetas[i], rs[i], s=5, color=color)
+
+        if i == (len(thetas) - 1):
+            self.anim2.event_source.stop()
+            self.anim.event_source.start()
+
+
+    def chunks(self, a_list, n):
+        for i in range(0, len(a_list), n):
+            yield a_list[i: i+n]
+
+
 
     #create a function to randomly assign symptoms
 
@@ -162,6 +207,7 @@ class Virus():
     #and will assign the rest severe
     #resulting in recovery or death
     #random
+
 
     def assign_symptoms(self):
 
@@ -198,7 +244,7 @@ class Virus():
 
 
 
-        #assign recovery bound and death bound
+        #assign lower and upper recovery bound and death bound
         low = self.day + self.mild_fast
         high = self.day + self.mild_slow
 
@@ -221,7 +267,7 @@ class Virus():
 
             self.severe["recovery"][recovery_day]["thetas"].append(recovery_theta)
 
-            self.severe["recovey"][recovery_day]["rs"].append(recovery_r)
+            self.severe["recovery"][recovery_day]["rs"].append(recovery_r)
 
             
         high = self.day + self.death_fast
@@ -270,18 +316,33 @@ class Virus():
 
         #create a text for day/ infected/ died/ recovered
         self.day_text.set_text("Day {}".format(self.day))
-        self.infected_text.set_text("Infected {}".format(self.num_currently_infected))
+        self.infected_text.set_text("\nInfected {}".format(self.num_currently_infected))
         self.deaths_text.set_text("\nDeaths: {}".format(self.num_deaths))
         self.recovered_text.set_text("\n\nRecovered: {}".format(self.num_recovered))
+
+
+
+    def gen(self):
+        while self.num_deaths + self.num_recovered < self.total_num_infected:
+            yield
+
+
 
     def animate(self):
         self.anim = ani.FuncAnimation(
             self.fig,
             self.spread_virus,
-            frames=,
+            frames=self.gen,
             repeat=True
         )
 
 
-Virus(COVID19_PARAMS)
-plt.show()
+
+def main():
+    coronavirus = Virus(COVID19_PARAMS)
+    coronavirus.animate()
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
